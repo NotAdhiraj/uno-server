@@ -206,7 +206,7 @@ describe('E2E Lifecycle: Play Again, UNO, Multi-draw', () => {
       for (let i = 0; i < 2; i++) {
         const opp = freshStates[i].players.find(p => p.hand === undefined);
         assert.ok(opp, 'client should not see opponent hand');
-        assert.equal(opp.handCount, undefined, 'handCount should not be exposed');
+        assert.ok(typeof opp.handCount === 'number', 'handCount should be exposed as number');
       }
 
       cleanup(g.clients);

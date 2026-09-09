@@ -232,7 +232,7 @@ describe("BUG REPRODUCTION: UNO call and catch", () => {
 		);
 	});
 
-	it("serialized state does not include handCount or unoCalled for opponents", () => {
+	it("serialized state includes handCount but hides hand and unoCalled for opponents", () => {
 		const room = makeRoom({
 			players: 2,
 			status: "playing",
@@ -253,8 +253,8 @@ describe("BUG REPRODUCTION: UNO call and catch", () => {
 		);
 		assert.equal(
 			s.players[1].handCount,
-			undefined,
-			"opponent handCount should be hidden",
+			1,
+			"opponent handCount should be exposed as number",
 		);
 		assert.equal(
 			s.players[0].unoCalled,

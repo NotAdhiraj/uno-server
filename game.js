@@ -324,7 +324,7 @@ function drawCards(room, playerId, count) {
   advanceTurn(room);
 
   console.log(`[GAME] Room ${room.code}: "${player.name}" drew ${count} card${count > 1 ? 's' : ''}${wasStacking ? ' (stack resolved)' : ''}`);
-  return { room, drawn };
+  return { room, drawn, turnKept: false };
 }
 
 function ensureDeck(room, needed = 1) {
@@ -467,6 +467,7 @@ function serializeRoomForPlayer(room, playerId) {
       name: p.name,
       isConnected: p.isConnected,
       hand: p.id === playerId ? p.hand : undefined,
+      handCount: p.id !== playerId ? p.hand.length : undefined,
       eliminated: p.eliminated || false,
       finishPosition: p.finishPosition || null,
       canBeCaught: p.id !== playerId && !p.eliminated && p.isConnected && !p.unoCalled && room.status === 'playing',

@@ -408,7 +408,7 @@ describe('playMultipleCards', () => {
 
     const opp = serialized.players.find(p => p.id === 'p1');
     assert.equal(opp.hand, undefined);
-    assert.equal(opp.handCount, undefined, 'handCount not exposed');
+    assert.equal(opp.handCount, 2, 'handCount exposed as number');
   });
 
   it('11. single card play still works', () => {

@@ -550,7 +550,7 @@ describe('serializeRoomForPlayer', () => {
     assert.equal(view.players[2].hand, undefined);
   });
 
-  it('opponents do not expose handCount or hand', () => {
+  it('opponents do not expose hand but do expose handCount', () => {
     const room = makeRoom({
       status: 'playing',
       currentColor: 'blue',
@@ -563,7 +563,7 @@ describe('serializeRoomForPlayer', () => {
     });
 
     const view = game.serializeRoomForPlayer(room, 'p0');
-    assert.equal(view.players[1].handCount, undefined, 'handCount should not be exposed');
+    assert.equal(view.players[1].handCount, 3, 'handCount should be exposed as number');
     assert.equal(view.players[1].hand, undefined, 'hand should not be exposed');
   });
 

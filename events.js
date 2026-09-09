@@ -261,16 +261,13 @@ function registerEvents(io, socket) {
 		if (playerIdx === -1) return cb?.({ error: "Not in room" });
 		if (room.currentTurn !== playerIdx) return cb?.({ error: "Not your turn" });
 
-		const result = drawMatchingCards(room, playerId);
+		const drawCount = room.drawStack > 0 ? room.drawStack : 1;
+		const result = drawCards(room, playerId, drawCount);
 		if (result.error) return cb?.({ error: result.error });
 
 		const playerName = room.players.find((p) => p.id === playerId)?.name;
-		if (result.drawn.length > 1) {
-			io.to(room.code).emit("game_event", {
-				type: "penalty_draw",
-				playerName,
-				count: result.drawn.length,
-			});
+		if (drawCount > 1) {
+			io.to(room.code).emit("game_event", { type: "penalty_draw", playerName, count: drawCount });
 		} else {
 			io.to(room.code).emit("game_event", { type: "card_drawn", playerName });
 		}

@@ -147,7 +147,7 @@ describe('Integration: Full multiplayer UNO flow', () => {
     }
   });
 
-  it('4. redaction: each client sees own hand only, opponents get no hand info', () => {
+  it('4. redaction: each client sees own hand only, opponents get handCount but not hand contents', () => {
     const states = logN('game_started');
     for (let i = 0; i < 4; i++) {
       const me = states[i].players.find(p => p.hand !== undefined);
@@ -156,7 +156,7 @@ describe('Integration: Full multiplayer UNO flow', () => {
       for (const p of states[i].players) {
         if (p.id !== me.id) {
           assert.equal(p.hand, undefined, `${p.name} hand leaked to Client ${i}`);
-          assert.equal(p.handCount, undefined, `${p.name} handCount leaked to Client ${i}`);
+          assert.ok(typeof p.handCount === 'number', `${p.name} handCount should be a number`);
         }
       }
     }
@@ -427,7 +427,7 @@ describe('Integration: Full multiplayer UNO flow', () => {
       const after = log(remaining[0], 'state_update');
       const discPlayer = after.players[turnIdx];
       assert.equal(discPlayer.isConnected, false);
-      assert.equal(discPlayer.handCount, undefined, 'handCount not exposed');
+      assert.ok(typeof discPlayer.handCount === 'number', 'handCount exposed as number for disconnected player');
       cleanup(g.clients);
     });
 
@@ -498,7 +498,7 @@ describe('Integration: Full multiplayer UNO flow', () => {
       for (const p of res.room.players) {
         if (p.id !== p1Id) {
           assert.equal(p.hand, undefined, 'opponent hand should not be leaked');
-          assert.equal(p.handCount, undefined, 'opponent handCount should not be exposed');
+          assert.ok(typeof p.handCount === 'number', 'opponent handCount exposed as number');
         }
       }
 
@@ -574,7 +574,7 @@ describe('Integration: Full multiplayer UNO flow', () => {
       const disc = after.players.find(p => p.id === p1Id);
       assert.ok(disc, 'disconnected player should still exist in room');
       assert.equal(disc.isConnected, false);
-      assert.equal(disc.handCount, undefined, 'handCount not exposed');
+      assert.ok(typeof disc.handCount === 'number', 'handCount exposed as number for disconnected player');
 
       cleanup(g.clients);
     });

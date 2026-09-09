@@ -694,8 +694,8 @@ describe('Security: server rejects invalid payloads', () => {
 
     const result = game.catchUno(room, 'p0', 'p1');
     assert.equal(result.error, undefined);
-    assert.equal(result.success, false);
-    assert.equal(room.players[0].hand.length, 6, 'catcher draws 5 cards');
+    assert.equal(result.success, true);
+    assert.equal(room.players[1].hand.length, 6, 'target draws 5 cards');
   });
 
   it('serializeRoomForPlayer includes canBeCaught per opponent', () => {
@@ -713,7 +713,7 @@ describe('Security: server rejects invalid payloads', () => {
     const serialized = game.serializeRoomForPlayer(room, 'p0');
     const opponent = serialized.players.find(p => p.id === 'p1');
     assert.equal(opponent.canBeCaught, true, 'connected opponent without UNO should be catchable');
-    assert.equal(opponent.handCount, undefined, 'handCount should not be exposed');
+    assert.equal(opponent.handCount, 1, 'handCount should be exposed as number');
     assert.equal(opponent.unoCalled, undefined, 'unoCalled should not be exposed');
   });
 
@@ -751,5 +751,179 @@ describe('Security: server rejects invalid payloads', () => {
     const serialized = game.serializeRoomForPlayer(room, 'p0');
     const opponent = serialized.players.find(p => p.id === 'p1');
     assert.equal(opponent.canBeCaught, false, 'eliminated opponent should not be catchable');
+  });
+
+  it('drawCards draws exactly 1 card', () => {
+    const room = makeRoom({
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('top', 'red', '3')],
+      deck: [makeCard('d1', 'blue', '1'), makeCard('d2', 'green', '2')],
+      hands: [
+        [makeCard('a', 'green', '9')],
+        [makeCard('b', 'blue', '2')],
+      ],
+    });
+
+    const result = game.drawCards(room, 'p0', 1);
+    assert.equal(result.error, undefined);
+    assert.equal(result.drawn.length, 1, 'exactly 1 card drawn');
+    assert.equal(room.players[0].hand.length, 2, 'hand increased by 1');
+    assert.equal(result.turnKept, false, 'turn always advances on normal draw');
+    assert.equal(room.currentTurn, 1, 'turn advanced to next player');
+  });
+
+  it('drawCards draws exactly 1 even if drawn card is playable', () => {
+    const room = makeRoom({
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('top', 'red', '3')],
+      deck: [makeCard('d1', 'red', '5')],
+      hands: [
+        [makeCard('a', 'green', '9')],
+        [makeCard('b', 'blue', '2')],
+      ],
+    });
+
+    const result = game.drawCards(room, 'p0', 1);
+    assert.equal(result.error, undefined);
+    assert.equal(result.drawn.length, 1, 'exactly 1 card even if playable');
+    assert.equal(room.players[0].hand.length, 2, 'hand has 2 cards');
+    assert.equal(room.players[0].hand[1].color, 'red', 'drawn card is red (playable)');
+    assert.equal(room.currentTurn, 1, 'turn advanced');
+  });
+
+  it('drawCards draws exactly 1 action card', () => {
+    const room = makeRoom({
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('top', 'red', '3')],
+      deck: [makeCard('d1', 'red', 'skip')],
+      hands: [
+        [makeCard('a', 'green', '9')],
+        [makeCard('b', 'blue', '2')],
+      ],
+    });
+
+    const result = game.drawCards(room, 'p0', 1);
+    assert.equal(result.error, undefined);
+    assert.equal(result.drawn.length, 1, 'exactly 1 action card drawn');
+    assert.equal(room.players[0].hand.length, 2, 'hand has 2 cards');
+    assert.equal(room.players[0].hand[1].value, 'skip', 'drawn card is skip');
+    assert.equal(room.currentTurn, 1, 'turn advanced');
+  });
+
+  it('drawCards draws exactly 1 wild card', () => {
+    const room = makeRoom({
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('top', 'red', '3')],
+      deck: [makeCard('d1', 'wild', 'wild')],
+      hands: [
+        [makeCard('a', 'green', '9')],
+        [makeCard('b', 'blue', '2')],
+      ],
+    });
+
+    const result = game.drawCards(room, 'p0', 1);
+    assert.equal(result.error, undefined);
+    assert.equal(result.drawn.length, 1, 'exactly 1 wild drawn');
+    assert.equal(room.players[0].hand.length, 2, 'hand has 2 cards');
+    assert.equal(room.players[0].hand[1].color, 'wild', 'drawn card is wild');
+    assert.equal(room.currentTurn, 1, 'turn advanced');
+  });
+
+  it('drawCards advances turn exactly once', () => {
+    const room = makeRoom({
+      players: 3,
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('top', 'red', '3')],
+      deck: [makeCard('d1', 'blue', '1'), makeCard('d2', 'green', '2')],
+      hands: [
+        [makeCard('a', 'green', '9')],
+        [makeCard('b', 'blue', '2')],
+        [makeCard('c', 'yellow', '4')],
+      ],
+    });
+
+    game.drawCards(room, 'p0', 1);
+    assert.equal(room.currentTurn, 1, 'turn advanced exactly once to player 1');
+
+    game.drawCards(room, 'p1', 1);
+    assert.equal(room.currentTurn, 2, 'turn advanced exactly once to player 2');
+  });
+
+  it('drawCards resolves draw stack correctly', () => {
+    const room = makeRoom({
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      drawStack: 2,
+      discardPile: [makeCard('top', 'red', 'draw2')],
+      deck: [
+        makeCard('d1', 'blue', '1'), makeCard('d2', 'green', '2'),
+        makeCard('d3', 'yellow', '3'), makeCard('d4', 'blue', '4'),
+      ],
+      hands: [
+        [makeCard('a', 'green', '9')],
+        [makeCard('b', 'blue', '2')],
+      ],
+    });
+
+    const result = game.drawCards(room, 'p0', 2);
+    assert.equal(result.error, undefined);
+    assert.equal(result.drawn.length, 2, 'drew 2 cards from stack');
+    assert.equal(room.players[0].hand.length, 3, 'hand has 3 cards');
+    assert.equal(room.drawStack, 0, 'draw stack cleared');
+    assert.equal(room.currentTurn, 1, 'turn advanced');
+  });
+
+  it('drawCards reshuffles deck when needed', () => {
+    const room = makeRoom({
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('top', 'red', '3')],
+      deck: [],
+      hands: [
+        [makeCard('a', 'green', '9')],
+        [makeCard('b', 'blue', '2')],
+      ],
+    });
+    room.discardPile.push(makeCard('extra1', 'blue', '5'));
+    room.discardPile.push(makeCard('extra2', 'green', '6'));
+
+    const result = game.drawCards(room, 'p0', 1);
+    assert.equal(result.error, undefined);
+    assert.equal(result.drawn.length, 1, 'drew 1 card after reshuffle');
+    assert.equal(room.players[0].hand.length, 2, 'hand has 2 cards');
+  });
+
+  it('serializeRoomForPlayer includes handCount for opponents', () => {
+    const room = makeRoom({
+      status: 'playing',
+      currentTurn: 0,
+      currentColor: 'red',
+      discardPile: [makeCard('top', 'red', '3')],
+      hands: [
+        [makeCard('a', 'green', '9'), makeCard('b', 'red', '5')],
+        [makeCard('c', 'blue', '2')],
+      ],
+    });
+
+    const serialized = game.serializeRoomForPlayer(room, 'p0');
+    const me = serialized.players.find(p => p.id === 'p0');
+    const opponent = serialized.players.find(p => p.id === 'p1');
+
+    assert.equal(me.handCount, undefined, 'own handCount is not exposed');
+    assert.equal(me.hand.length, 2, 'own hand is exposed');
+    assert.equal(opponent.handCount, 1, 'opponent handCount is 1');
+    assert.equal(opponent.hand, undefined, 'opponent hand is not exposed');
   });
 });
