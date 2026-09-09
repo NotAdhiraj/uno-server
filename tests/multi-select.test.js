@@ -150,7 +150,7 @@ describe('isValidMultiPlay', () => {
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('Action cards cannot be combined'));
+    assert.ok(r.error.includes('Cannot mix number cards and action cards'));
   });
 
   it('11. rejects skip in multi-play', () => {
@@ -160,7 +160,7 @@ describe('isValidMultiPlay', () => {
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('Action cards cannot be combined'));
+    assert.ok(r.error.includes('Cannot mix number cards and action cards'));
   });
 
   it('12. rejects reverse in multi-play', () => {
@@ -170,7 +170,7 @@ describe('isValidMultiPlay', () => {
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('Action cards cannot be combined'));
+    assert.ok(r.error.includes('Cannot mix number cards and action cards'));
   });
 
   it('13. rejects if first card not playable', () => {

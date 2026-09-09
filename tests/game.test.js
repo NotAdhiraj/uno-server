@@ -915,7 +915,7 @@ describe('Elimination system', () => {
 
   it('14. skip works correctly with eliminated players', () => {
     const room = setupElimination(3);
-    room.players[0].hand = [makeCard('sk', 'blue', 'skip')];
+    room.players[0].hand = [makeCard('sk', 'blue', 'skip'), makeCard('extra', 'blue', '7')];
     game.playCard(room, 'p0', 'sk');
     assert.ok(room.players[room.currentTurn].eliminated !== true);
     assert.notEqual(room.currentTurn, 0);
@@ -923,7 +923,7 @@ describe('Elimination system', () => {
 
   it('15. draw2 works correctly with eliminated players', () => {
     const room = setupElimination(3);
-    room.players[0].hand = [makeCard('d2', 'blue', 'draw2')];
+    room.players[0].hand = [makeCard('d2', 'blue', 'draw2'), makeCard('extra', 'blue', '7')];
     game.playCard(room, 'p0', 'd2');
     assert.equal(room.drawStack, 2);
     assert.ok(room.players[room.currentTurn].eliminated !== true);

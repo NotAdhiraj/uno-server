@@ -42,6 +42,7 @@ function initGame(room) {
   room.discardPile = [];
   room.direction = 1;
   room.drawStack = 0;
+  room.drawStackType = null;
   room.currentTurn = 0;
   room.winner = null;
   room.loser = null;
@@ -92,6 +93,15 @@ function advanceTurn(room) {
   room.currentTurn = nextIdx;
 }
 
+function getNextTurn(room) {
+  const count = room.players.length;
+  let nextIdx = room.currentTurn;
+  do {
+    nextIdx = (nextIdx + room.direction + count) % count;
+  } while (room.players[nextIdx].eliminated && nextIdx !== room.currentTurn);
+  return nextIdx;
+}
+
 function isValidPlay(room, playerId, card) {
   if (room.status !== 'playing') return false;
 
@@ -105,6 +115,9 @@ function isValidPlay(room, playerId, card) {
   const top = topCard(room);
 
   if (room.drawStack > 0) {
+    if (room.drawStackType === 'wild4') {
+      return card.value === 'wild4';
+    }
     return card.value === 'draw2' || card.value === 'wild4';
   }
 
@@ -137,6 +150,10 @@ function playCard(room, playerId, cardId, chosenColor) {
     return { error: 'Must choose a valid color (red, blue, green, yellow)' };
   }
 
+  if (player.hand.length === 1 && isPowerCard(card)) {
+    return { error: 'Power cards cannot be used as the final card' };
+  }
+
   player.hand.splice(cardIdx, 1);
   room.discardPile.push(card);
 
@@ -154,8 +171,10 @@ function playCard(room, playerId, cardId, chosenColor) {
 
   if (card.value === 'draw2') {
     room.drawStack += 2;
+    room.drawStackType = 'draw2';
   } else if (card.value === 'wild4') {
     room.drawStack += 4;
+    room.drawStackType = 'wild4';
   } else if (card.value === 'reverse' && playerCount > 2) {
     room.direction *= -1;
   }
@@ -204,6 +223,16 @@ function playCard(room, playerId, cardId, chosenColor) {
 }
 
 const ACTION_CARD_VALUES = ['draw2', 'wild4', 'skip', 'reverse'];
+const POWER_CARD_VALUES = ['skip', 'reverse', 'draw2', 'wild', 'wild4'];
+const NUMBER_CARD_VALUES = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+
+function isPowerCard(card) {
+  return POWER_CARD_VALUES.includes(card.value);
+}
+
+function isNumberCard(card) {
+  return NUMBER_CARD_VALUES.includes(card.value);
+}
 
 function isValidMultiPlay(room, playerId, cardIds) {
   if (!Array.isArray(cardIds) || cardIds.length < 2) {
@@ -234,25 +263,59 @@ function isValidMultiPlay(room, playerId, cardIds) {
     cards.push(card);
   }
 
+  // Wild cards (wild, wild4) cannot be in multi-play
   for (const card of cards) {
     if (card.color === 'wild' || card.value === 'wild4') {
       return { valid: false, error: 'Wild cards cannot be combined in a multi-card play' };
     }
-    if (ACTION_CARD_VALUES.includes(card.value)) {
-      return { valid: false, error: 'Action cards cannot be combined' };
+  }
+
+  // During an active draw stack, only draw2 cards can be played
+  if (room.drawStack > 0) {
+    for (const card of cards) {
+      if (card.value !== 'draw2') {
+        return { valid: false, error: 'Only Draw Two cards can be played during an active draw stack' };
+      }
     }
   }
 
+  // Determine grouping mode: same-value or same-color chain
+  const firstValue = cards[0].value;
+  const firstColor = cards[0].color;
+  const allSameValue = cards.every(c => c.value === firstValue);
+  const allSameColor = cards.every(c => c.color === firstColor);
+
+  // Check for mixed card types (number + action card in same group)
+  const hasNumberCard = cards.some(c => isNumberCard(c));
+  const hasActionCard = cards.some(c => !isNumberCard(c));
+  if (hasNumberCard && hasActionCard) {
+    return { valid: false, error: 'Cannot mix number cards and action cards in a multi-card play' };
+  }
+
+  // For action cards: only same-value grouping allowed (skip+skip, reverse+reverse, draw2+draw2)
+  const isActionCard = !isNumberCard(cards[0]);
+
+  if (isActionCard) {
+    if (!allSameValue) {
+      return { valid: false, error: 'Action cards must all have the same value' };
+    }
+  } else {
+    // Number cards: must be same-value chain or same-color chain
+    if (!allSameValue && !allSameColor) {
+      // Mixed: check chain matching (each card matches previous by color or value)
+      for (let i = 1; i < cards.length; i++) {
+        const prev = cards[i - 1];
+        const curr = cards[i];
+        if (curr.color !== prev.color && curr.value !== prev.value) {
+          return { valid: false, error: `Card ${i + 1} does not match the previous card in the chain` };
+        }
+      }
+    }
+  }
+
+  // First card must be individually playable against the current discard
   if (!isValidPlay(room, playerId, cards[0])) {
     return { valid: false, error: 'First card is not playable against the current discard' };
-  }
-
-  for (let i = 1; i < cards.length; i++) {
-    const prev = cards[i - 1];
-    const curr = cards[i];
-    if (curr.color !== prev.color && curr.value !== prev.value) {
-      return { valid: false, error: `Card ${i + 1} does not match the previous card in the chain` };
-    }
   }
 
   return { valid: true, cards };
@@ -264,6 +327,14 @@ function playMultipleCards(room, playerId, cardIds, chosenColor) {
 
   const player = room.players.find(p => p.id === playerId);
   const cards = validation.cards;
+
+  // Final power card check: if playing these cards empties the hand, all must be number cards
+  if (player.hand.length === cards.length) {
+    const allPower = cards.every(c => isPowerCard(c));
+    if (allPower) {
+      return { error: 'Power cards cannot be used as the final card' };
+    }
+  }
 
   for (const card of cards) {
     const idx = player.hand.findIndex(c => c.id === card.id);
@@ -303,7 +374,36 @@ function playMultipleCards(room, playerId, cardIds, chosenColor) {
     return { room, eliminated: player, gameOver: false };
   }
 
-  advanceTurn(room);
+  // Handle action card effects for multi-card plays
+  const firstCardValue = cards[0].value;
+
+  if (firstCardValue === 'reverse') {
+    const reverseCount = cards.length;
+    if (playerCount > 2) {
+      // Odd number of reverses: flip direction. Even: no change.
+      if (reverseCount % 2 === 1) {
+        room.direction *= -1;
+      }
+      advanceTurn(room);
+    }
+    // In 2-player, reverse = skip (same player goes again). Don't advance turn.
+  } else if (firstCardValue === 'skip') {
+    const skipCount = cards.length;
+    // N consecutive skips = skip N players. Advance turn by N+1 positions.
+    for (let i = 0; i <= skipCount; i++) {
+      room.currentTurn = (room.currentTurn + room.direction + playerCount) % playerCount;
+    }
+    if (room.players[room.currentTurn].eliminated || !room.players[room.currentTurn].isConnected) {
+      advanceTurn(room);
+    }
+  } else if (firstCardValue === 'draw2') {
+    room.drawStack += cards.length * 2;
+    room.drawStackType = 'draw2';
+    advanceTurn(room);
+  } else {
+    advanceTurn(room);
+  }
+
   return { room };
 }
 
@@ -321,6 +421,7 @@ function drawCards(room, playerId, count) {
 
   const wasStacking = room.drawStack > 0;
   room.drawStack = 0;
+  room.drawStackType = null;
   advanceTurn(room);
 
   console.log(`[GAME] Room ${room.code}: "${player.name}" drew ${count} card${count > 1 ? 's' : ''}${wasStacking ? ' (stack resolved)' : ''}`);
@@ -455,9 +556,11 @@ function serializeRoomForPlayer(room, playerId) {
     maxPlayers: room.maxPlayers,
     status: room.status,
     currentTurn: room.currentTurn,
+    nextTurn: room.status === 'playing' ? getNextTurn(room) : null,
     currentColor: room.currentColor,
     direction: room.direction,
     drawStack: room.drawStack,
+    drawStackType: room.drawStackType || null,
     winner: room.winner,
     loser: room.loser,
     finishOrder: room.finishOrder || [],
@@ -490,5 +593,6 @@ module.exports = {
   serializeRoomForPlayer,
   getActivePlayers,
   advanceTurn,
+  getNextTurn,
   COLORS,
 };

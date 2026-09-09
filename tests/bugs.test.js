@@ -262,7 +262,7 @@ describe('BUG 4: skip card with eliminated/disconnected target', () => {
       discardPile: [makeCard('top', 'red', '3')],
       deck: [makeCard('d1', 'blue', '1')],
       hands: [
-        [makeCard('a', 'red', 'skip')],
+        [makeCard('a', 'red', 'skip'), makeCard('extra', 'red', '7')],
         [makeCard('b', 'blue', '1')],
         [],
         [makeCard('d', 'green', '1')],
@@ -285,7 +285,7 @@ describe('BUG 4: skip card with eliminated/disconnected target', () => {
       discardPile: [makeCard('top', 'red', '3')],
       deck: [makeCard('d1', 'blue', '1')],
       hands: [
-        [makeCard('a', 'red', 'skip')],
+        [makeCard('a', 'red', 'skip'), makeCard('extra', 'red', '7')],
         [makeCard('b', 'blue', '1')],
         [makeCard('c', 'green', '1')],
         [makeCard('d', 'yellow', '1')],
@@ -308,7 +308,7 @@ describe('BUG 4: skip card with eliminated/disconnected target', () => {
       discardPile: [makeCard('top', 'red', '3')],
       deck: [makeCard('d1', 'blue', '1')],
       hands: [
-        [makeCard('a', 'red', 'skip')],
+        [makeCard('a', 'red', 'skip'), makeCard('extra', 'red', '7')],
         [makeCard('b', 'blue', '1')],
       ],
     });
