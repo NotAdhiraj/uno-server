@@ -180,17 +180,17 @@ describe('isValidMultiPlay', () => {
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('First card is not playable'));
+    assert.ok(r.error.includes('not playable'));
   });
 
-  it('14. rejects chain break (color and value mismatch)', () => {
+  it('14. rejects card that does not match original top', () => {
     const room = setupRoom(
       [makeCard('a', 'red', '5'), makeCard('b', 'blue', '7')],
       'red', '5'
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('does not match'));
+    assert.ok(r.error.includes('not playable'));
   });
 
   it('15. accepts valid same-color chain', () => {
@@ -203,22 +203,23 @@ describe('isValidMultiPlay', () => {
     assert.equal(r.cards.length, 3);
   });
 
-  it('16. accepts valid same-value chain', () => {
+  it('16. accepts valid same-value cards (all match top value 5)', () => {
     const room = setupRoom(
       [makeCard('a', 'red', '5'), makeCard('b', 'blue', '5'), makeCard('c', 'green', '5')],
-      'red', '3'
+      'blue', '5'
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
     assert.equal(r.valid, true);
   });
 
-  it('17. accepts mixed color/value chain', () => {
+  it('17. rejects mixed chain where later cards do not match original top', () => {
     const room = setupRoom(
       [makeCard('a', 'red', '7'), makeCard('b', 'blue', '7'), makeCard('c', 'blue', '9')],
       'red', '5'
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
-    assert.equal(r.valid, true);
+    assert.equal(r.valid, false);
+    assert.ok(r.error.includes('not playable'));
   });
 
   it('18. accepts exactly 2 cards same color', () => {
@@ -231,10 +232,10 @@ describe('isValidMultiPlay', () => {
     assert.equal(r.cards.length, 2);
   });
 
-  it('19. accepts exactly 2 cards same value', () => {
+  it('19. accepts exactly 2 cards same value (both match top value 5)', () => {
     const room = setupRoom(
       [makeCard('a', 'red', '5'), makeCard('b', 'blue', '5')],
-      'red', '3'
+      'blue', '5'
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, true);
@@ -279,11 +280,11 @@ describe('playMultipleCards', () => {
 
   it('2. updates currentColor to last played card', () => {
     const room = setupRoom(
-      [makeCard('a', 'red', '5'), makeCard('b', 'blue', '5')],
-      'red', '3'
+      [makeCard('a', 'red', '5'), makeCard('b', 'green', '5')],
+      'blue', '5'
     );
     game.playMultipleCards(room, 'p0', ['a', 'b']);
-    assert.equal(room.currentColor, 'blue');
+    assert.equal(room.currentColor, 'green');
   });
 
   it('3. advances turn after play', () => {
@@ -380,7 +381,7 @@ describe('playMultipleCards', () => {
 
   it('9. all played cards appear in discard pile in order', () => {
     const room = setupRoom(
-      [makeCard('a', 'red', '5'), makeCard('b', 'blue', '5'), makeCard('c', 'blue', '7')],
+      [makeCard('a', 'red', '1'), makeCard('b', 'red', '5'), makeCard('c', 'red', '7')],
       'red', '3'
     );
     game.playMultipleCards(room, 'p0', ['a', 'b', 'c']);

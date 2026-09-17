@@ -270,20 +270,10 @@ function isValidMultiPlay(room, playerId, cardIds) {
     }
   }
 
-  // During an active draw stack, only draw2 cards can be played
-  if (room.drawStack > 0) {
-    for (const card of cards) {
-      if (card.value !== 'draw2') {
-        return { valid: false, error: 'Only Draw Two cards can be played during an active draw stack' };
-      }
-    }
-  }
-
-  // Determine grouping mode: same-value or same-color chain
-  const firstValue = cards[0].value;
-  const firstColor = cards[0].color;
-  const allSameValue = cards.every(c => c.value === firstValue);
-  const allSameColor = cards.every(c => c.color === firstColor);
+  // Capture the ORIGINAL game state BEFORE any validation
+  // This is critical: every card must be validated against this original state
+  const originalTop = topCard(room);
+  const originalColor = room.currentColor;
 
   // Check for mixed card types (number + action card in same group)
   const hasNumberCard = cards.some(c => isNumberCard(c));
@@ -296,26 +286,38 @@ function isValidMultiPlay(room, playerId, cardIds) {
   const isActionCard = !isNumberCard(cards[0]);
 
   if (isActionCard) {
+    const firstValue = cards[0].value;
+    const allSameValue = cards.every(c => c.value === firstValue);
     if (!allSameValue) {
       return { valid: false, error: 'Action cards must all have the same value' };
     }
-  } else {
-    // Number cards: must be same-value chain or same-color chain
-    if (!allSameValue && !allSameColor) {
-      // Mixed: check chain matching (each card matches previous by color or value)
-      for (let i = 1; i < cards.length; i++) {
-        const prev = cards[i - 1];
-        const curr = cards[i];
-        if (curr.color !== prev.color && curr.value !== prev.value) {
-          return { valid: false, error: `Card ${i + 1} does not match the previous card in the chain` };
-        }
-      }
-    }
   }
 
-  // First card must be individually playable against the current discard
-  if (!isValidPlay(room, playerId, cards[0])) {
-    return { valid: false, error: 'First card is not playable against the current discard' };
+  // CRITICAL FIX: Every card must independently match the ORIGINAL top card
+  // NO CHAIN VALIDATION - each card validated against originalTop/originalColor
+  // This prevents Red 5 + Red 7 from being valid when top is Blue 5
+  for (let i = 0; i < cards.length; i++) {
+    const card = cards[i];
+
+    // During an active draw stack, only draw2 or wild4 can be played
+    // (wild4 is already excluded above, so only draw2 remains)
+    if (room.drawStack > 0) {
+      if (card.value !== 'draw2') {
+        return { valid: false, error: 'Only Draw Two cards can be played during an active draw stack' };
+      }
+      continue;
+    }
+
+    // Validate each card against the ORIGINAL top card and ORIGINAL current color
+    // A card is valid if:
+    // - its color matches the original current color, OR
+    // - its value matches the original top card's value
+    const matchesColor = card.color === originalColor;
+    const matchesValue = card.value === originalTop.value;
+
+    if (!matchesColor && !matchesValue) {
+      return { valid: false, error: `Card "${card.color} ${card.value}" is not playable against the current discard` };
+    }
   }
 
   return { valid: true, cards };

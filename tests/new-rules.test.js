@@ -814,9 +814,10 @@ describe('Multi-card selection validation', () => {
   });
 
   describe('number card groups', () => {
-    it('same value different colors: valid', () => {
+    it('same value different colors: valid (all match top value 5)', () => {
       const room = makeRoom({
-        discardPile: [makeCard('top', 'red', '3')],
+        discardPile: [makeCard('top', 'blue', '5')],
+        currentColor: 'blue',
         hands: [[makeCard('a', 'red', '5'), makeCard('b', 'blue', '5')], []],
       });
       const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
@@ -832,13 +833,14 @@ describe('Multi-card selection validation', () => {
       assert.equal(r.valid, true);
     });
 
-    it('mixed color/value chain: valid', () => {
+    it('mixed color/value chain: rejects when later cards do not match original top', () => {
       const room = makeRoom({
         discardPile: [makeCard('top', 'red', '3')],
         hands: [[makeCard('a', 'red', '5'), makeCard('b', 'blue', '5'), makeCard('c', 'blue', '9')], []],
       });
       const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
-      assert.equal(r.valid, true);
+      assert.equal(r.valid, false);
+      assert.ok(r.error.includes('not playable'));
     });
   });
 });
