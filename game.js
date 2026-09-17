@@ -293,31 +293,33 @@ function isValidMultiPlay(room, playerId, cardIds) {
     }
   }
 
-  // CRITICAL FIX: Every card must independently match the ORIGINAL top card
-  // NO CHAIN VALIDATION - each card validated against originalTop/originalColor
-  // This prevents Red 5 + Red 7 from being valid when top is Blue 5
-  for (let i = 0; i < cards.length; i++) {
-    const card = cards[i];
-
-    // During an active draw stack, only draw2 or wild4 can be played
-    // (wild4 is already excluded above, so only draw2 remains)
-    if (room.drawStack > 0) {
-      if (card.value !== 'draw2') {
-        return { valid: false, error: 'Only Draw Two cards can be played during an active draw stack' };
-      }
-      continue;
+  // During an active draw stack, only draw2 cards can be played
+  // (wild4 is already excluded above)
+  if (room.drawStack > 0) {
+    if (!cards.every(c => c.value === 'draw2')) {
+      return { valid: false, error: 'Only Draw Two cards can be played during an active draw stack' };
     }
+    return { valid: true, cards };
+  }
 
-    // Validate each card against the ORIGINAL top card and ORIGINAL current color
-    // A card is valid if:
-    // - its color matches the original current color, OR
-    // - its value matches the original top card's value
-    const matchesColor = card.color === originalColor;
-    const matchesValue = card.value === originalTop.value;
+  // BATCH COHERENCE: all cards must form ONE valid homogeneous batch
+  // COLOR BATCH: every card shares the current playable color
+  // VALUE BATCH: every card shares the same value (any value)
+  const allSameColor = cards.every(c => c.color === originalColor);
+  const allSameValue = cards.every(c => c.value === cards[0].value);
 
-    if (!matchesColor && !matchesValue) {
-      return { valid: false, error: `Card "${card.color} ${card.value}" is not playable against the current discard` };
-    }
+  if (!allSameColor && !allSameValue) {
+    return { valid: false, error: 'Selected cards do not form a valid batch' };
+  }
+
+  // At least one card must be individually playable against the original state
+  // This anchors the batch to the current game state
+  const hasPlayableCard = cards.some(card => {
+    return card.color === originalColor || card.value === originalTop.value;
+  });
+
+  if (!hasPlayableCard) {
+    return { valid: false, error: 'No card in the batch is playable against the current discard' };
   }
 
   return { valid: true, cards };

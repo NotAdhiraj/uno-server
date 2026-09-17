@@ -173,24 +173,22 @@ describe('isValidMultiPlay', () => {
     assert.ok(r.error.includes('Cannot mix number cards and action cards'));
   });
 
-  it('13. rejects if first card not playable', () => {
+  it('13. rejects if no valid batch basis (Blue 5 + Blue 7 vs Red 3)', () => {
     const room = setupRoom(
       [makeCard('a', 'blue', '5'), makeCard('b', 'blue', '7')],
       'red', '3'
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('not playable'));
   });
 
-  it('14. rejects card that does not match original top', () => {
+  it('14. rejects card that does not form a valid batch (Red 5 + Blue 7 vs Red 5)', () => {
     const room = setupRoom(
       [makeCard('a', 'red', '5'), makeCard('b', 'blue', '7')],
       'red', '5'
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('not playable'));
   });
 
   it('15. accepts valid same-color chain', () => {
@@ -212,14 +210,96 @@ describe('isValidMultiPlay', () => {
     assert.equal(r.valid, true);
   });
 
-  it('17. rejects mixed chain where later cards do not match original top', () => {
+  it('17. rejects mixed chain where cards do not form a valid batch', () => {
     const room = setupRoom(
       [makeCard('a', 'red', '7'), makeCard('b', 'blue', '7'), makeCard('c', 'blue', '9')],
       'red', '5'
     );
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('not playable'));
+  });
+
+  it('17b. rejects mixed color+value batch (Red 7 by value + Green 6 by color)', () => {
+    const room = setupRoom(
+      [makeCard('a', 'red', '7'), makeCard('b', 'green', '6')],
+      'green', '7'
+    );
+    const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
+    assert.equal(r.valid, false);
+    assert.ok(r.error.includes('batch'));
+  });
+
+  it('17c. rejects mixed 3-card batch (Red 7 value + Green 6 color + Green 1 color)', () => {
+    const room = setupRoom(
+      [makeCard('a', 'red', '7'), makeCard('b', 'green', '6'), makeCard('c', 'green', '1')],
+      'green', '7'
+    );
+    const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
+    assert.equal(r.valid, false);
+    assert.ok(r.error.includes('batch'));
+  });
+
+  it('17d. rejects mixed batch even when each card is individually playable', () => {
+    const room = setupRoom(
+      [makeCard('a', 'red', '7'), makeCard('b', 'blue', '7'), makeCard('c', 'green', '6')],
+      'green', '7'
+    );
+    const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
+    assert.equal(r.valid, false);
+    assert.ok(r.error.includes('batch'));
+  });
+
+  it('17e. accepts pure value batch (3 cards all matching top value 7)', () => {
+    const room = setupRoom(
+      [makeCard('a', 'red', '7'), makeCard('b', 'blue', '7'), makeCard('c', 'green', '7')],
+      'green', '7'
+    );
+    const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
+    assert.equal(r.valid, true);
+  });
+
+  it('17f. accepts pure color batch (3 cards all Green)', () => {
+    const room = setupRoom(
+      [makeCard('a', 'green', '6'), makeCard('b', 'green', '1'), makeCard('c', 'green', '9')],
+      'green', '7'
+    );
+    const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
+    assert.equal(r.valid, true);
+  });
+
+  it('17g. batch is order-independent (Green 1 + Green 6 same as Green 6 + Green 1)', () => {
+    const room1 = setupRoom(
+      [makeCard('a', 'green', '1'), makeCard('b', 'green', '6')],
+      'green', '7'
+    );
+    const r1 = game.isValidMultiPlay(room1, 'p0', ['a', 'b']);
+
+    const room2 = setupRoom(
+      [makeCard('a', 'green', '1'), makeCard('b', 'green', '6')],
+      'green', '7'
+    );
+    const r2 = game.isValidMultiPlay(room2, 'p0', ['b', 'a']);
+
+    assert.equal(r1.valid, r2.valid, 'order should not affect validity');
+    assert.equal(r1.valid, true);
+  });
+
+  it('17h. rejects when one card is individually unplayable (value mismatch)', () => {
+    const room = setupRoom(
+      [makeCard('a', 'red', '7'), makeCard('b', 'blue', '5')],
+      'green', '7'
+    );
+    const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
+    assert.equal(r.valid, false);
+  });
+
+  it('17i. accepts value batch where one card is individually unplayable (Green 6 + Red 6 vs Green 7)', () => {
+    const room = setupRoom(
+      [makeCard('a', 'green', '6'), makeCard('b', 'red', '6')],
+      'green', '7'
+    );
+    const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
+    assert.equal(r.valid, true);
   });
 
   it('18. accepts exactly 2 cards same color', () => {

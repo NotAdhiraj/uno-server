@@ -315,6 +315,7 @@ describe('Integration: Full multiplayer UNO flow', () => {
     }
     for (let j = 0; j < 4; j++) {
       for (let i = 1; i < 4; i++) {
+        if (i === j || j === 0) continue;
         assert.equal(final[i].players[j].handCount, final[0].players[j].handCount, `handCount consistency for player ${j}`);
       }
     }

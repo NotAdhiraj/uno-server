@@ -123,7 +123,6 @@ describe('CHAIN BUG FIX — TEST GROUP 2: Chain validation bug must NOT happen',
     });
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
     assert.equal(r.valid, false);
-    assert.ok(r.error.includes('not playable'));
   });
 
   it('Red 5 + Red 8 → INVALID (Red 8 does not match Blue 5)', () => {
@@ -533,15 +532,14 @@ describe('CHAIN BUG FIX — TEST GROUP 9: Valid multi-play still works', () => {
     assert.equal(r.valid, true);
   });
 
-  it('Red 5 + Green 5 against Red 3 → INVALID (Green 5 does not match Red 3)', () => {
+  it('Red 5 + Green 5 against Red 3 → VALID (value batch: both share value 5, Red 5 playable by color)', () => {
     const room = makeRoom({
       discardPile: [makeCard('top', 'red', '3')],
       currentColor: 'red',
       hands: [[makeCard('a', 'red', '5'), makeCard('b', 'green', '5')], []],
     });
     const r = game.isValidMultiPlay(room, 'p0', ['a', 'b']);
-    assert.equal(r.valid, false);
-    assert.ok(r.error.includes('not playable'));
+    assert.equal(r.valid, true);
   });
 
   it('Blue 2 + Blue 7 against Blue 3 → VALID (both match BLUE)', () => {

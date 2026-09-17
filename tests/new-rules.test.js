@@ -840,7 +840,6 @@ describe('Multi-card selection validation', () => {
       });
       const r = game.isValidMultiPlay(room, 'p0', ['a', 'b', 'c']);
       assert.equal(r.valid, false);
-      assert.ok(r.error.includes('not playable'));
     });
   });
 });
