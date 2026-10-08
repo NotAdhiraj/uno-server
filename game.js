@@ -84,21 +84,29 @@ function getActivePlayers(room) {
   return room.players.filter(p => !p.eliminated);
 }
 
+function isTurnEligible(player) {
+  return !player.eliminated && player.isConnected !== false;
+}
+
 function advanceTurn(room) {
   const count = room.players.length;
   let nextIdx = room.currentTurn;
+  let safety = 0;
   do {
     nextIdx = (nextIdx + room.direction + count) % count;
-  } while (room.players[nextIdx].eliminated && nextIdx !== room.currentTurn);
+    safety++;
+  } while (!isTurnEligible(room.players[nextIdx]) && nextIdx !== room.currentTurn && safety <= count);
   room.currentTurn = nextIdx;
 }
 
 function getNextTurn(room) {
   const count = room.players.length;
   let nextIdx = room.currentTurn;
+  let safety = 0;
   do {
     nextIdx = (nextIdx + room.direction + count) % count;
-  } while (room.players[nextIdx].eliminated && nextIdx !== room.currentTurn);
+    safety++;
+  } while (!isTurnEligible(room.players[nextIdx]) && nextIdx !== room.currentTurn && safety <= count);
   return nextIdx;
 }
 
@@ -210,11 +218,12 @@ function playCard(room, playerId, cardId, chosenColor) {
       advanceTurn(room);
     }
   } else if (card.value === 'skip') {
-    const skipTarget = (room.currentTurn + 2 * room.direction + playerCount) % playerCount;
-    room.currentTurn = skipTarget;
-    if (room.players[room.currentTurn].eliminated || !room.players[room.currentTurn].isConnected) {
-      advanceTurn(room);
-    }
+    // Skip one eligible (connected + non-eliminated) player: advance twice,
+    // each step landing only on eligible players. This keeps 2-player
+    // behavior (turn returns to the same player) without index arithmetic
+    // that would count eliminated/disconnected players as participants.
+    advanceTurn(room);
+    advanceTurn(room);
   } else {
     advanceTurn(room);
   }
@@ -393,11 +402,9 @@ function playMultipleCards(room, playerId, cardIds, chosenColor) {
     // In 2-player, reverse = skip (same player goes again). Don't advance turn.
   } else if (firstCardValue === 'skip') {
     const skipCount = cards.length;
-    // N consecutive skips = skip N players. Advance turn by N+1 positions.
+    // N consecutive skips = skip N eligible players: advance N+1 times so
+    // each step lands only on connected, non-eliminated players.
     for (let i = 0; i <= skipCount; i++) {
-      room.currentTurn = (room.currentTurn + room.direction + playerCount) % playerCount;
-    }
-    if (room.players[room.currentTurn].eliminated || !room.players[room.currentTurn].isConnected) {
       advanceTurn(room);
     }
   } else if (firstCardValue === 'draw2') {
@@ -457,7 +464,6 @@ function drawMatchingCards(room, playerId) {
   }
 
   const drawn = [];
-  let matchColor = null;
   let matchValue = null;
 
   while (room.deck.length > 0 || room.discardPile.length > 1) {
@@ -470,15 +476,15 @@ function drawMatchingCards(room, playerId) {
 
     if (drawn.length === 0) {
       drawn.push(room.deck.shift());
-      matchColor = card.color;
       matchValue = card.value;
       continue;
     }
 
-    if (card.color === matchColor || card.value === matchValue) {
+    // Multi-card DRAW rule: same VALUE only. Color is irrelevant, so a
+    // same-color card with a different value (e.g. Red 7 after Red 5)
+    // stops the chain.
+    if (card.value === matchValue) {
       drawn.push(room.deck.shift());
-      matchColor = card.color;
-      matchValue = card.value;
     } else {
       break;
     }

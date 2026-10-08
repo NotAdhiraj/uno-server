@@ -265,7 +265,7 @@ describe("BUG REPRODUCTION: UNO call and catch", () => {
 });
 
 describe("BUG REPRODUCTION: Multi-card draw", () => {
-	it("drawMatchingCards draws matching color sequence", () => {
+	it("drawMatchingCards draws same-value sequence regardless of color", () => {
 		const room = makeRoom({
 			players: 2,
 			status: "playing",
@@ -284,13 +284,12 @@ describe("BUG REPRODUCTION: Multi-card draw", () => {
 
 		const result = game.drawMatchingCards(room, "p0");
 		assert.equal(result.error, undefined);
-		assert.equal(result.drawn.length, 3, "should draw Red 5, Blue 5, Blue 7");
+		assert.equal(result.drawn.length, 2, "should draw Red 5, Blue 5 (same value); Blue 7 stops the chain");
 		assert.equal(result.drawn[0].id, "d1");
 		assert.equal(result.drawn[1].id, "d2");
-		assert.equal(result.drawn[2].id, "d3");
-		assert.equal(room.players[0].hand.length, 3);
-		assert.equal(room.deck.length, 1, "Green 9 should remain");
-		assert.equal(room.deck[0].id, "d4");
+		assert.equal(room.players[0].hand.length, 2);
+		assert.equal(room.deck.length, 2, "Blue 7 and Green 9 should remain");
+		assert.equal(room.deck[0].id, "d3");
 		assert.equal(room.currentTurn, 1, "turn advances once");
 	});
 
@@ -363,11 +362,12 @@ describe("BUG REPRODUCTION: Multi-card draw", () => {
 			currentColor: "red",
 			discardPile: [makeCard("top", "red", "3")],
 			drawStack: 0,
-			deck: [makeCard("d1", "red", "5"), makeCard("d2", "red", "6")],
+			deck: [makeCard("d1", "red", "5"), makeCard("d2", "blue", "5"), makeCard("d3", "green", "6")],
 			hands: [[], []],
 		});
 
-		game.drawMatchingCards(room, "p0");
+		const result = game.drawMatchingCards(room, "p0");
+		assert.equal(result.drawn.length, 2, "Red 5 + Blue 5 (same value); Green 6 stops the chain");
 		assert.equal(room.currentTurn, 1, "turn should advance once to p1");
 	});
 

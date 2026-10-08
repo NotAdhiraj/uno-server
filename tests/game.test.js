@@ -1104,7 +1104,7 @@ describe('Multi-card draw', () => {
     return room;
   }
 
-  it('1. same-color cards can be drawn together', () => {
+  it('1. same-color different-value cards can NOT be drawn together (value only)', () => {
     const room = setupMultiDraw();
     room.deck = [
       makeCard('d1', 'blue', '1'),
@@ -1113,8 +1113,10 @@ describe('Multi-card draw', () => {
       makeCard('d4', 'red', '7'),
     ];
     const result = game.drawMatchingCards(room, 'p0');
-    assert.equal(result.drawn.length, 3);
-    assert.equal(room.players[0].hand.length, 3);
+    assert.equal(result.drawn.length, 1);
+    assert.equal(result.drawn[0].id, 'd1');
+    assert.equal(room.players[0].hand.length, 1);
+    assert.equal(room.deck[0].id, 'd2', 'Blue 3 must remain in deck');
   });
 
   it('2. same-value cards can be drawn together', () => {
@@ -1129,7 +1131,7 @@ describe('Multi-card draw', () => {
     assert.equal(result.drawn.length, 3);
   });
 
-  it('3. sequence stops when neither color nor value matches (chain matching)', () => {
+  it('3. chain stops when value differs even if color matched previously (value only)', () => {
     const room = setupMultiDraw();
     room.deck = [
       makeCard('d1', 'red', '5'),
@@ -1138,10 +1140,10 @@ describe('Multi-card draw', () => {
       makeCard('d4', 'green', '9'),
     ];
     const result = game.drawMatchingCards(room, 'p0');
-    assert.equal(result.drawn.length, 3, 'Red 5, Blue 5 (value match), Blue 7 (color match with Blue 5)');
+    assert.equal(result.drawn.length, 2, 'Red 5, Blue 5 (same value); Blue 7 stops the chain');
     assert.equal(result.drawn[0].id, 'd1');
     assert.equal(result.drawn[1].id, 'd2');
-    assert.equal(result.drawn[2].id, 'd3');
+    assert.equal(room.deck[0].id, 'd3', 'Blue 7 must remain in deck');
   });
 
   it('4. wild does not match everything', () => {
@@ -1169,11 +1171,12 @@ describe('Multi-card draw', () => {
   it('6. turn advances exactly once after multi-draw', () => {
     const room = setupMultiDraw();
     room.deck = [
-      makeCard('d1', 'blue', '1'),
-      makeCard('d2', 'blue', '3'),
+      makeCard('d1', 'red', '5'),
+      makeCard('d2', 'blue', '5'),
       makeCard('d3', 'red', '7'),
     ];
-    game.drawMatchingCards(room, 'p0');
+    const result = game.drawMatchingCards(room, 'p0');
+    assert.equal(result.drawn.length, 2, 'Red 5 + Blue 5 (same value); Red 7 stops the chain');
     assert.equal(room.currentTurn, 1);
   });
 

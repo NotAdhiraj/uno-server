@@ -642,7 +642,7 @@ describe('E2E Lifecycle: Play Again, UNO, Multi-draw', () => {
       cleanup(g.clients);
     });
 
-    it('16. chain matching: Red5→Blue5→Blue7 all drawn (each matches previous)', () => {
+    it('16. value matching only: Red5→Blue5 drawn, Blue7 stops (color ignored)', () => {
       const room = {
         code: 'CHAIN', status: 'playing', currentTurn: 0, drawStack: 0, direction: 1, currentColor: 'red',
         deck: [
@@ -656,10 +656,9 @@ describe('E2E Lifecycle: Play Again, UNO, Multi-draw', () => {
       };
 
       const result = game.drawMatchingCards(room, 'p0');
-      assert.equal(result.drawn.length, 3, 'Red 5 → Blue 5 (value 5) → Blue 7 (color blue)');
+      assert.equal(result.drawn.length, 2, 'Red 5 → Blue 5 (same value 5); Blue 7 stops the chain');
       assert.equal(result.drawn[0].id, 'c1');
       assert.equal(result.drawn[1].id, 'c2');
-      assert.equal(result.drawn[2].id, 'c3');
     });
 
     it('17. stops at non-matching card: Red5→Blue3 stops (blue≠red, 3≠5)', () => {
@@ -769,7 +768,7 @@ describe('E2E Lifecycle: Play Again, UNO, Multi-draw', () => {
       cleanup(g.clients);
     });
 
-    it('22. chain matching extended: Blue5→Red5→Red3→Blue3 draws 4', () => {
+    it('22. value-only chain: Blue5→Red5 drawn, Red3 stops (no color chaining)', () => {
       const room = {
         code: 'EXT', status: 'playing', currentTurn: 0, drawStack: 0, direction: 1, currentColor: 'blue',
         deck: [
@@ -784,11 +783,10 @@ describe('E2E Lifecycle: Play Again, UNO, Multi-draw', () => {
       };
 
       const result = game.drawMatchingCards(room, 'p0');
-      assert.equal(result.drawn.length, 4, 'Blue5→Red5(val5)→Red3(val3 wrong? no: red color matches red)→Blue3(blue matches blue)→Green7 stops');
+      assert.equal(result.drawn.length, 2, 'Blue5→Red5 (same value 5); Red3 has a different value and stops the chain');
       assert.equal(result.drawn[0].id, 'c1');
       assert.equal(result.drawn[1].id, 'c2');
-      assert.equal(result.drawn[2].id, 'c3');
-      assert.equal(result.drawn[3].id, 'c4');
+      assert.equal(room.deck[0].id, 'c3', 'Red 3 must remain in deck');
     });
 
     it('23. value chain: Red5→Blue5→Green5 draws 3 (all value 5)', () => {
